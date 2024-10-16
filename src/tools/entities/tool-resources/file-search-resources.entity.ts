@@ -1,0 +1,40 @@
+/**
+ * Copyright 2024 IBM Corp.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+import { Embeddable, Embedded } from '@mikro-orm/core';
+
+import { ToolType } from '../tool/tool.entity.js';
+
+import { ToolResource } from '@/tools/entities/tool-resources/tool-resource.entity.js';
+import { VectorStoreContainer } from '@/vector-stores/entities/vector-store-container.entity.js';
+import { VectorStore } from '@/vector-stores/entities/vector-store.entity.js';
+
+@Embeddable({ discriminatorValue: ToolType.FILE_SEARCH })
+export class FileSearchResource extends ToolResource {
+  type = ToolType.FILE_SEARCH;
+
+  @Embedded({ object: true })
+  vectorStoreContainers: VectorStoreContainer[];
+
+  constructor({ vectorStores }: FileSearchResourceInput) {
+    super();
+    this.vectorStoreContainers = vectorStores.map(
+      (vectorStore) => new VectorStoreContainer({ vectorStore })
+    );
+  }
+}
+
+export type FileSearchResourceInput = { vectorStores: VectorStore[] };
