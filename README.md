@@ -2,6 +2,7 @@
     <img src="./docs/assets/Bee_Dark.svg" height="128">
     <h1 align="center">Bee API</h1>
 </p>
+
 OpenAI-compatible Assistants API backed by [Bee Agent Framework](https://github.com/i-am-bee/bee-agent-framework)
 
 ## Getting started
