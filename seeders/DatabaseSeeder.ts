@@ -17,6 +17,8 @@
 import { ref, type EntityManager } from '@mikro-orm/core';
 import { Seeder } from '@mikro-orm/seeder';
 
+import { ToolsSeeder } from './ToolsSeeder';
+
 import { OrganizationUserRole, ProjectRole } from '@/administration/entities/constants';
 import { OrganizationUser } from '@/administration/entities/organization-user.entity';
 import { Organization } from '@/administration/entities/organization.entity';
@@ -118,6 +120,7 @@ export class DatabaseSeeder extends Seeder {
       }
     });
     em.persist([assistant, projectApiKey]);
+    await this.call(em, [ToolsSeeder]);
     await em.flush();
     process.env.IN_SEEDER = undefined;
   }

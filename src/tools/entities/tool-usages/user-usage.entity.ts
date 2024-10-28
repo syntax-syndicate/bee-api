@@ -16,7 +16,10 @@
 
 import { Embeddable, ManyToOne, Ref } from '@mikro-orm/core';
 
-import { Tool, ToolType } from '../tool/tool.entity.js';
+import { ToolType } from '../tool/tool.entity.js';
+import { FunctionTool } from '../tool/function-tool.entity.js';
+import { CodeInterpreterTool } from '../tool/code-interpreter-tool.entity.js';
+import { ApiTool } from '../tool/api-tool.entity.js';
 
 import { ToolUsage } from './tool-usage.entity.js';
 
@@ -25,7 +28,7 @@ export class UserUsage extends ToolUsage {
   type = ToolType.USER;
 
   @ManyToOne()
-  tool!: Ref<Tool>;
+  tool!: Ref<FunctionTool> | Ref<CodeInterpreterTool> | Ref<ApiTool>;
 
   constructor({ tool }: UserUsageInput) {
     super();

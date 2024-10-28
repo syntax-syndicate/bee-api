@@ -19,6 +19,7 @@ import { Entity, Enum, Index, Property } from '@mikro-orm/core';
 import { ApiTool } from './api-tool.entity.js';
 import { CodeInterpreterTool } from './code-interpreter-tool.entity.js';
 import { FunctionTool } from './function-tool.entity.js';
+import { SystemTool } from './system-tool.entity.js';
 
 import { ProjectScopedEntity, ProjectScopedEntityInput } from '@/common/project-scoped.entity.js';
 
@@ -34,7 +35,8 @@ export type ToolType = (typeof ToolType)[keyof typeof ToolType];
 export const ToolExecutor = {
   FUNCTION: 'function',
   CODE_INTERPRETER: 'code_interpreter',
-  API: 'api'
+  API: 'api',
+  SYSTEM: 'system'
 } as const;
 export type ToolExecutor = (typeof ToolExecutor)[keyof typeof ToolExecutor];
 
@@ -85,4 +87,4 @@ export type ToolInput = ProjectScopedEntityInput &
   Pick<Tool, 'name' | 'description'> &
   Partial<Pick<Tool, 'userDescription'>>;
 
-export type AnyTool = ApiTool | CodeInterpreterTool | FunctionTool;
+export type AnyTool = ApiTool | CodeInterpreterTool | FunctionTool | SystemTool;

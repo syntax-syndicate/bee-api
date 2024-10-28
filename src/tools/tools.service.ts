@@ -14,18 +14,11 @@
  * limitations under the License.
  */
 
-import { Loaded, ref } from '@mikro-orm/core';
+import { FilterQuery, Loaded, ref } from '@mikro-orm/core';
 import { CustomTool, CustomToolCreateError } from 'bee-agent-framework/tools/custom';
 import dayjs from 'dayjs';
 import mime from 'mime/lite';
-import { WikipediaTool } from 'bee-agent-framework/tools/search/wikipedia';
-import { Tool as FrameworkTool } from 'bee-agent-framework/tools/base';
-import { ZodTypeAny } from 'zod';
-import { zodToJsonSchema } from 'zod-to-json-schema';
-import { drop, dropWhile, groupBy, pipe, prop, sortBy, take, takeWhile } from 'remeda';
-import { OpenMeteoTool } from 'bee-agent-framework/tools/weather/openMeteo';
-import { ArXivTool } from 'bee-agent-framework/tools/arxiv';
-import { PythonTool } from 'bee-agent-framework/tools/python/python';
+import { groupBy } from 'remeda';
 import { parse } from 'yaml';
 
 import { Tool as ToolDto } from './dtos/tool.js';
@@ -64,22 +57,10 @@ import { FileContainer } from '@/files/entities/files-container.entity.js';
 import { FileSearchResource } from '@/tools/entities/tool-resources/file-search-resources.entity.js';
 import { VectorStore } from '@/vector-stores/entities/vector-store.entity.js';
 import { VECTOR_STORE_DEFAULT_MAX_NUM_RESULTS } from '@/vector-stores/constants.js';
-import { FileSearchTool } from '@/runs/execution/tools/file-search-tool.js';
 import { getUpdatedValue } from '@/utils/update.js';
-import { createPythonStorage } from '@/runs/execution/tools/python-tool-storage.js';
 import encrypt from '@/utils/crypto/encrypt.js';
 import { createCodeInterpreterConnectionOptions } from '@/runs/execution/tools/helpers.js';
-import { ReadFileTool } from '@/runs/execution/tools/read-file-tool.js';
-import { snakeToCamel } from '@/utils/strings.js';
-import { createSearchTool } from '@/runs/execution/tools/search-tool';
-
-type SystemTool = Pick<FrameworkTool, 'description' | 'name' | 'inputSchema'> & {
-  type: ToolType;
-  id: string;
-  createdAt: Date;
-  isExternal: boolean;
-  userDescription?: string;
-};
+import { createPaginatedResponse, getListCursor } from '@/utils/pagination.js';
 
 export function toToolCallDto(toolCall: Loaded<AnyToolCall, 'fileContainers.file'>): ToolCall {
   switch (toolCall.type) {
@@ -223,47 +204,26 @@ export function toToolCallDeltaDto(
   }
 }
 
-export function toDto(tool: AnyTool | SystemTool): ToolDto {
-  if (tool instanceof Tool) {
-    return {
-      id: tool.id,
-      object: 'tool',
-      type: tool.type,
-      name: tool.name,
-      is_external: true,
-      created_at: dayjs(tool.createdAt).unix(),
-      user_description: tool.userDescription ?? null,
-      metadata: tool.metadata ?? {},
-      source_code: tool.executor === ToolExecutor.CODE_INTERPRETER ? tool.sourceCode : null,
-      json_schema:
-        tool.executor === ToolExecutor.CODE_INTERPRETER
-          ? JSON.stringify(tool.jsonSchema)
-          : tool.executor === ToolExecutor.FUNCTION
-            ? JSON.stringify(tool.parameters)
-            : null,
-      open_api_schema: tool.executor === ToolExecutor.API ? tool.openApiSchema : null,
-      description: tool.description
-    };
-  } else {
-    return {
-      id: tool.id,
-      object: 'tool',
-      type: tool.type,
-      name: tool.name,
-      is_external: tool.isExternal,
-      created_at: dayjs(tool.createdAt).unix(),
-      user_description: tool.userDescription ?? null,
-      metadata: {},
-      json_schema: JSON.stringify(
-        '_def' in tool.inputSchema()
-          ? zodToJsonSchema(tool.inputSchema() as ZodTypeAny)
-          : tool.inputSchema()
-      ),
-      source_code: '',
-      description: tool.description,
-      open_api_schema: null
-    };
-  }
+export function toDto(tool: AnyTool): ToolDto {
+  return {
+    id: tool.id,
+    object: 'tool',
+    type: tool.type,
+    name: tool.name,
+    is_external: !(tool.id === 'read_file' || tool.id === 'file_search'),
+    created_at: dayjs(tool.createdAt).unix(),
+    user_description: tool.userDescription ?? null,
+    metadata: tool.metadata ?? {},
+    source_code: tool.executor === ToolExecutor.CODE_INTERPRETER ? tool.sourceCode : null,
+    json_schema:
+      tool.executor === ToolExecutor.CODE_INTERPRETER
+        ? JSON.stringify(tool.jsonSchema)
+        : tool.executor === ToolExecutor.FUNCTION
+          ? JSON.stringify(tool.parameters)
+          : null,
+    open_api_schema: tool.executor === ToolExecutor.API ? tool.openApiSchema : null,
+    description: tool.description
+  };
 }
 
 export function toToolUsageDto(toolUsage: AnyToolUsage): ToolUsage {
@@ -323,7 +283,9 @@ export function createToolUsage(toolUsage: ToolUsage): AnyToolUsage {
       });
     case ToolType.USER:
       return new UserUsage({
-        tool: ORM.em.getRepository(Tool).getReference(toolUsage.user.tool.id, { wrapped: true })
+        tool: ORM.em
+          .getRepository<FunctionTool | CodeInterpreterTool | ApiTool>(Tool)
+          .getReference(toolUsage.user.tool.id, { wrapped: true })
       });
   }
 }
@@ -459,144 +421,21 @@ export async function listTools({
   type,
   search
 }: ToolsListQuery): Promise<ToolsListResponse> {
-  const arXivTool = new ArXivTool();
-  const searchTool = createSearchTool();
-  const wikipediaTool = new WikipediaTool();
-  const weatherTool = new OpenMeteoTool();
-  const pythonTool = BEE_CODE_INTERPRETER_URL
-    ? new PythonTool({
-        codeInterpreter: { url: BEE_CODE_INTERPRETER_URL },
-        storage: createPythonStorage([], null)
-      })
-    : null;
-  const fileSearch = new FileSearchTool({ vectorStores: [], maxNumResults: 0 });
-  const readFile = new ReadFileTool({ files: [], fileSize: 0 });
-
-  const systemTools: SystemTool[] =
-    !type || type.includes(ToolType.SYSTEM)
-      ? [
-          {
-            type: ToolType.SYSTEM,
-            id: SystemTools.WEB_SEARCH,
-            createdAt: new Date('2024-07-24'),
-            ...searchTool,
-            inputSchema: searchTool.inputSchema,
-            isExternal: true,
-            userDescription:
-              "Retrieve real-time search results from across the internet, including news, current events, or content from specific websites or domains. Leverages Google's indexing and search algorithms to provide relevant results, rather than functioning as a web scraper."
-          },
-          {
-            type: ToolType.SYSTEM,
-            id: SystemTools.WIKIPEDIA,
-            createdAt: new Date('2024-07-24'),
-            ...wikipediaTool,
-            inputSchema: wikipediaTool.inputSchema,
-            isExternal: true,
-            userDescription:
-              'Retrieve detailed information from [Wikipedia.org](https://wikipedia.org) on a wide range of topics, including famous individuals, locations, organizations, and historical events. Ideal for obtaining comprehensive overviews or specific details on well-documented subjects. May not be suitable for lesser-known or more recent topics. The information is subject to community edits which can be inaccurate.'
-          },
-          {
-            type: ToolType.SYSTEM,
-            id: SystemTools.WEATHER,
-            createdAt: new Date('2024-07-25'),
-            ...weatherTool,
-            inputSchema: weatherTool.inputSchema,
-            isExternal: true,
-            userDescription:
-              'Retrieve real-time weather forecasts including detailed information on temperature, wind speed, and precipitation. Access forecasts predicting weather up to 16 days in the future and archived forecasts for weather up to 30 days in the past. Ideal for obtaining up-to-date weather predictions and recent historical weather trends.'
-          },
-          {
-            type: ToolType.SYSTEM,
-            id: SystemTools.ARXIV,
-            createdAt: new Date('2024-07-25'),
-            ...arXivTool,
-            inputSchema: arXivTool.inputSchema,
-            isExternal: true,
-            userDescription:
-              'Retrieve abstracts of research articles published on [ArXiv.org](https://arxiv.org), along with their titles, authors, publication dates, and categories. Ideal for retrieving high-level information about academic papers. The full text of articles is not provided, making it unsuitable for full-text searches or advanced analytics.'
-          },
-          {
-            type: ToolType.SYSTEM,
-            id: 'read_file',
-            createdAt: new Date('2024-10-02'),
-            ...readFile,
-            inputSchema: readFile.inputSchema,
-            isExternal: false,
-            userDescription:
-              'Read and interpret basic files to deliver summaries, highlight key points, and facilitate file comprehension. Ideal for straightforward tasks requiring access to raw data without any processing. Text (.txt, .md, .html) and JSON files (application/json) are supported up to 5 MB. PDF (.pdf) and text-based image files (.jpg, .jpeg, .png, .tiff, .bmp, .gif) are supported by the WDU text extraction service, limited to the content window of our base model, Llama 3.1 70B, which is 5 MB. The WDU text extraction service is used to extract text from image and PDF files, while text file types are handled by the LLM directly.'
-          }
-        ]
-      : [];
-
-  if (!type || type.includes(ToolType.FUNCTION)) {
-    systemTools.push({
-      type: ToolType.FUNCTION,
-      id: 'function',
-      createdAt: new Date('2024-07-31'),
-      description: 'Function to be executed by the user with parameters supplied by the assistant',
-      name: 'Function',
-      inputSchema: () => ({}),
-      isExternal: false
-    });
+  const where: FilterQuery<AnyTool> = {};
+  if (type && type.length > 0) {
+    where.type = { $in: type };
   }
-
-  if (!type || type.includes(ToolType.FILE_SEARCH)) {
-    systemTools.push({
-      type: ToolType.FILE_SEARCH,
-      id: 'file_search',
-      createdAt: new Date('2024-07-31'),
-      ...fileSearch,
-      inputSchema: fileSearch.inputSchema,
-      isExternal: false,
-      userDescription:
-        'Read and interpret larger or more complex files using advanced search techniques where contextual understanding is required. Content parsing and chunking is used to break down large volumes of data into manageable pieces for effective analysis. Embeddings (numerical representations that capture the meaning and context of content) enable both traditional keyword and vector search. Vector search enhances the ability to identify similar content based on meaning, even if the exact words differ, improving the chances of identifying relevant information. Text (.txt, .md, .html) and JSON files (application/json) are supported up to 100 MB. PDF (.pdf) and text-based image files (.jpg, .jpeg, .png, .tiff, .bmp, .gif) are supported by the WDU text extraction service.'
-    });
+  if (search) {
+    const regexp = new RegExp(search, 'i');
+    where.$or = [{ description: regexp }, { name: regexp }];
   }
-  if (pythonTool && (!type || type.includes(ToolType.CODE_INTERPRETER))) {
-    systemTools.push({
-      type: ToolType.CODE_INTERPRETER,
-      id: 'code_interpreter',
-      createdAt: new Date('2024-07-01'),
-      ...pythonTool,
-      inputSchema: pythonTool.inputSchema,
-      isExternal: true,
-      userDescription:
-        'Execute Python code for various tasks, including data analysis, file processing, and visualizations. Supports the installation of any library such as NumPy, Pandas, SciPy, and Matplotlib. Users can create new files or convert existing files, which are then made available for download.'
-    });
-  }
-
-  const userTools =
-    !type || type.includes(ToolType.USER) ? await ORM.em.getRepository(Tool).find({}) : [];
-  const tools = [...systemTools, ...userTools].filter((tool) => {
-    if (search) {
-      const regexp = new RegExp(`.*${search}.*`, 'gi');
-      return regexp.test(tool.name) || regexp.test(tool.description);
-    }
-    return true;
-  });
-
-  const sortedTools = sortBy<any>(
-    tools,
-    [(data: Tool) => prop(data, snakeToCamel(order_by)).toString().toLowerCase(), order],
-    [prop('createdAt'), order],
-    [prop('id'), order]
+  const repo = ORM.em.getRepository(Tool);
+  const cursor = await getListCursor<AnyTool>(
+    where,
+    { limit, order, order_by, after, before },
+    repo
   );
-
-  const trimmedTools = pipe(
-    sortedTools,
-    dropWhile((tool) => (after ? tool.id !== after : false)),
-    drop(after ? 1 : 0),
-    takeWhile((tool) => (before ? tool.id !== before : true)),
-    take(limit)
-  );
-
-  return {
-    data: trimmedTools.map(toDto),
-    first_id: trimmedTools.at(0)?.id ?? null,
-    last_id: trimmedTools.at(-1)?.id ?? null,
-    has_more: trimmedTools.length > 0 && sortedTools.at(-1)?.id !== trimmedTools.at(-1)?.id,
-    total_count: sortedTools.length
-  };
+  return createPaginatedResponse(cursor, toDto);
 }
 
 async function createCodeInterpreterTool(
