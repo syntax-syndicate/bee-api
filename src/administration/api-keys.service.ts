@@ -196,7 +196,15 @@ export async function listOrganizationApiKeys({
 
   const cursor = await getListCursor<Loaded<ProjectApiKey, 'project'>>(
     filter,
-    { limit, order, order_by, after, before, filters: { projectAdministrationAccess: false } },
+    {
+      limit,
+      order,
+      order_by,
+      after,
+      before,
+      filters: { projectAdministrationAccess: false },
+      populate: ['project']
+    },
     ORM.em.getRepository(ProjectApiKey)
   );
   return createPaginatedResponse(cursor, toDto);
