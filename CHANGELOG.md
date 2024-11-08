@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.0.8](https://github.com/i-am-bee/bee-api/compare/v0.0.7...v0.0.8) (2024-11-08)
+
+### Features
+
+* use framework's tool validation and remove caption ([#54](https://github.com/i-am-bee/bee-api/issues/54)) ([77af525](https://github.com/i-am-bee/bee-api/commit/77af525527141ab1530faa1cc6de9fa2ceaf4f6a))
+
 ## [0.0.7](https://github.com/i-am-bee/bee-api/compare/v0.0.6...v0.0.7) (2024-11-05)
 
 ### Features
