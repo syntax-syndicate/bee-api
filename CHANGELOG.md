@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.0.9](https://github.com/i-am-bee/bee-api/compare/v0.0.8...v0.0.9) (2024-11-13)
+
+### Features
+
+* **extraction:** use Unstructured Opensource ([#29](https://github.com/i-am-bee/bee-api/issues/29)) ([549f924](https://github.com/i-am-bee/bee-api/commit/549f924e6203557dfac4a392a0907f35f9ed5540))
+
+### Bug Fixes
+
+* **extraction:** eliminate race condition and other errors ([#61](https://github.com/i-am-bee/bee-api/issues/61)) ([1a821cd](https://github.com/i-am-bee/bee-api/commit/1a821cdce8f2b5f6594e4843358d6662053de725))
+* **misc:** migration, redis and mongo SSL connections ([#59](https://github.com/i-am-bee/bee-api/issues/59)) ([3ebd1b1](https://github.com/i-am-bee/bee-api/commit/3ebd1b1a7a2a562f6969ae97eb015655ece2056d))
+* **run:** avoid unhandled promises during execution ([#64](https://github.com/i-am-bee/bee-api/issues/64)) ([db5a64f](https://github.com/i-am-bee/bee-api/commit/db5a64f230099900972a55ce1e3b2b3887aeb988))
+
 ## [0.0.8](https://github.com/i-am-bee/bee-api/compare/v0.0.7...v0.0.8) (2024-11-08)
 
 ### Features
