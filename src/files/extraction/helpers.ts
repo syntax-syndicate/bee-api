@@ -100,12 +100,13 @@ export async function scheduleExtraction(
 ) {
   switch (backend) {
     case ExtractionBackend.DOCLING: {
-      const job = await pythonQueue.add(QueueName.FILES_EXTRACTION_PYTHON, {
+      file.extraction = new DoclingExtraction({ jobId: file.id });
+      await ORM.em.flush();
+      await pythonQueue.add(QueueName.FILES_EXTRACTION_PYTHON, {
         fileId: file.id,
         backend
-      });
-      file.extraction = new DoclingExtraction({ jobId: job.id });
-      await ORM.em.flush();
+      },
+      { jobId: file.id });
       break;
     }
     case ExtractionBackend.WDU: {
