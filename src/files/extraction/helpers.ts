@@ -41,14 +41,7 @@ export function supportsExtraction(
     case ExtractionBackend.DOCLING:
       const extension = mime.getExtension(mimeType);
       if (!extension) return false;
-      return [
-        'docx',
-        'html',
-        'jpeg',
-        'pdf',
-        'pptx',
-        'png'
-      ].includes(extension);
+      return ['docx', 'html', 'jpeg', 'pdf', 'pptx', 'png'].includes(extension);
     case ExtractionBackend.WDU:
       return (
         mimeType.startsWith('text/') ||
@@ -102,11 +95,14 @@ export async function scheduleExtraction(
     case ExtractionBackend.DOCLING: {
       file.extraction = new DoclingExtraction({ jobId: file.id });
       await ORM.em.flush();
-      await pythonQueue.add(QueueName.FILES_EXTRACTION_PYTHON, {
-        fileId: file.id,
-        backend
-      },
-      { jobId: file.id });
+      await pythonQueue.add(
+        QueueName.FILES_EXTRACTION_PYTHON,
+        {
+          fileId: file.id,
+          backend
+        },
+        { jobId: file.id }
+      );
       break;
     }
     case ExtractionBackend.WDU: {

@@ -33,7 +33,4 @@ export class DoclingExtraction extends Extraction {
   }
 }
 
-export type DoclingExtractionInput = Pick<
-  DoclingExtraction,
-  'jobId' | 'storageId'
->;
+export type DoclingExtractionInput = Pick<DoclingExtraction, 'jobId' | 'storageId'>;

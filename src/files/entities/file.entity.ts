@@ -53,7 +53,11 @@ export class File extends ProjectScopedEntity {
   storageId: string;
 
   @Embedded({ object: true })
-  extraction?: DoclingExtraction | UnstructuredAPIExtraction | UnstructuredOpensourceExtraction | WDUExtraction;
+  extraction?:
+    | DoclingExtraction
+    | UnstructuredAPIExtraction
+    | UnstructuredOpensourceExtraction
+    | WDUExtraction;
 
   constructor({ purpose, bytes, filename, contentHash, storageId, ...rest }: FilePurposeInput) {
     super(rest);
