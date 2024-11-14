@@ -19,4 +19,7 @@ RUN poetry install
 
 COPY workers/python/python/ ./python/
 
+# Prepare worker resources.
+RUN poetry run python python/init_resources.py
+
 CMD ["poetry", "run", "python", "python/main.py"]

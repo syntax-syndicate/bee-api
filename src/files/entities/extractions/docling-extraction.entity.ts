@@ -14,10 +14,26 @@
  * limitations under the License.
  */
 
-export const ExtractionBackend = {
-  DOCLING: 'docling',
-  UNSTRUCTURED_OPENSOURCE: 'unstructured-opensource',
-  UNSTRUCTURED_API: 'unstructured-api',
-  WDU: 'wdu'
-} as const;
-export type ExtractionBackend = (typeof ExtractionBackend)[keyof typeof ExtractionBackend];
+import { Embeddable, Property } from '@mikro-orm/core';
+
+import { Extraction } from './extraction.entity';
+
+import { ExtractionBackend } from '@/files/extraction/constants';
+
+@Embeddable({ discriminatorValue: ExtractionBackend.DOCLING })
+export class DoclingExtraction extends Extraction {
+  backend = ExtractionBackend.DOCLING;
+
+  @Property()
+  storageId?: string;
+
+  constructor({ storageId, ...rest }: DoclingExtractionInput) {
+    super(rest);
+    this.storageId = storageId;
+  }
+}
+
+export type DoclingExtractionInput = Pick<
+  DoclingExtraction,
+  'jobId' | 'storageId'
+>;

@@ -19,13 +19,14 @@ import { RecursiveCharacterTextSplitter } from 'langchain/text_splitter';
 import mime from 'mime';
 
 import { s3Client } from '../files.service';
+import { DoclingExtraction } from '../entities/extractions/docling-extraction.entity';
 import { WDUExtraction } from '../entities/extractions/wdu-extraction.entity';
 import { UnstructuredOpensourceExtraction } from '../entities/extractions/unstructured-opensource-extraction.entity';
 import { UnstructuredAPIExtraction } from '../entities/extractions/unstructured-api-extraction.entity';
 import { nodeQueue, pythonQueue } from '../jobs/extraction.queue';
 
 import { ExtractionBackend } from './constants';
-import { UnstructuredExtractionDocument } from './types';
+import { DoclingExtractionDocument, UnstructuredExtractionDocument } from './types';
 
 import { File } from '@/files/entities/file.entity';
 import { EXTRACTION_BACKEND, S3_BUCKET_FILE_STORAGE } from '@/config';
@@ -37,6 +38,17 @@ export function supportsExtraction(
   backend: ExtractionBackend = EXTRACTION_BACKEND
 ): boolean {
   switch (backend) {
+    case ExtractionBackend.DOCLING:
+      const extension = mime.getExtension(mimeType);
+      if (!extension) return false;
+      return [
+        'docx',
+        'html',
+        'jpeg',
+        'pdf',
+        'pptx',
+        'png'
+      ].includes(extension);
     case ExtractionBackend.WDU:
       return (
         mimeType.startsWith('text/') ||
@@ -87,6 +99,15 @@ export async function scheduleExtraction(
   backend: ExtractionBackend = EXTRACTION_BACKEND
 ) {
   switch (backend) {
+    case ExtractionBackend.DOCLING: {
+      const job = await pythonQueue.add(QueueName.FILES_EXTRACTION_PYTHON, {
+        fileId: file.id,
+        backend
+      });
+      file.extraction = new DoclingExtraction({ jobId: job.id });
+      await ORM.em.flush();
+      break;
+    }
     case ExtractionBackend.WDU: {
       file.extraction = new WDUExtraction({ jobId: file.id });
       await ORM.em.flush();
@@ -167,6 +188,13 @@ export async function getExtractedText(file: Loaded<File>) {
       if (!body) throw new Error('Invalid Body of a file');
       return body.toString('utf-8');
     }
+    case ExtractionBackend.DOCLING: {
+      if (!extraction.storageId) throw new Error('Extraction missing');
+      const conversion = JSON.parse(
+        await readTextFile(extraction.storageId)
+      ) as DoclingExtractionDocument;
+      return conversion.markdown;
+    }
     case ExtractionBackend.UNSTRUCTURED_OPENSOURCE:
     case ExtractionBackend.UNSTRUCTURED_API: {
       if (!extraction.storageId) throw new Error('Extraction missing');
@@ -182,6 +210,12 @@ export async function getExtractedChunks(file: Loaded<File>) {
   const extraction = file.extraction;
   if (!extraction) throw new Error('Extraction not found');
   switch (extraction.backend) {
+    case ExtractionBackend.DOCLING:
+      if (!extraction.storageId) throw new Error('Extraction missing');
+      const document = JSON.parse(
+        await readTextFile(extraction.storageId)
+      ) as DoclingExtractionDocument;
+      return document.chunks;
     case ExtractionBackend.WDU: {
       const text = await getExtractedText(file);
       const splitter = new RecursiveCharacterTextSplitter({ chunkSize: 400, chunkOverlap: 200 });
