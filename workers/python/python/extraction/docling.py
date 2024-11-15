@@ -45,10 +45,12 @@ async def docling_extraction(file):
             await s3.meta.client.download_file(config.s3_bucket_file_storage, storage_id, source_doc)
 
             doc = DocumentConverter().convert(source_doc).document
+            dict = doc.export_to_dict()
             markdown = doc.export_to_markdown()
             chunks = [{ "text": c.text } for c in list(HierarchicalChunker().chunk(doc))]
 
             body = {
+                "dict": dict,
                 "markdown": markdown,
                 "chunks": chunks
             }
