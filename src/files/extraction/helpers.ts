@@ -38,10 +38,11 @@ export function supportsExtraction(
   backend: ExtractionBackend = EXTRACTION_BACKEND
 ): boolean {
   switch (backend) {
-    case ExtractionBackend.DOCLING:
+    case ExtractionBackend.DOCLING: {
       const extension = mime.getExtension(mimeType);
       if (!extension) return false;
       return ['docx', 'html', 'jpeg', 'pdf', 'pptx', 'png'].includes(extension);
+    }
     case ExtractionBackend.WDU:
       return (
         mimeType.startsWith('text/') ||
@@ -207,12 +208,13 @@ export async function getExtractedChunks(file: Loaded<File>) {
   const extraction = file.extraction;
   if (!extraction) throw new Error('Extraction not found');
   switch (extraction.backend) {
-    case ExtractionBackend.DOCLING:
+    case ExtractionBackend.DOCLING: {
       if (!extraction.storageId) throw new Error('Extraction missing');
       const document = JSON.parse(
         await readTextFile(extraction.storageId)
       ) as DoclingExtractionDocument;
-      return document.chunks;
+      return document.chunks.map((c) => c.text);
+    }
     case ExtractionBackend.WDU: {
       const text = await getExtractedText(file);
       const splitter = new RecursiveCharacterTextSplitter({ chunkSize: 400, chunkOverlap: 200 });
