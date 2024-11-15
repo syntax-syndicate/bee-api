@@ -25,12 +25,28 @@ export class DoclingExtraction extends Extraction {
   backend = ExtractionBackend.DOCLING;
 
   @Property()
-  storageId?: string;
+  documentStorageId?: string;
 
-  constructor({ storageId, ...rest }: DoclingExtractionInput) {
+  @Property()
+  textStorageId?: string;
+
+  @Property()
+  chunksStorageId?: string;
+
+  constructor({
+    documentStorageId,
+    textStorageId,
+    chunksStorageId,
+    ...rest
+  }: DoclingExtractionInput) {
     super(rest);
-    this.storageId = storageId;
+    this.documentStorageId = documentStorageId;
+    this.textStorageId = textStorageId;
+    this.chunksStorageId = chunksStorageId;
   }
 }
 
-export type DoclingExtractionInput = Pick<DoclingExtraction, 'jobId' | 'storageId'>;
+export type DoclingExtractionInput = Pick<
+  DoclingExtraction,
+  'jobId' | 'documentStorageId' | 'textStorageId' | 'chunksStorageId'
+>;

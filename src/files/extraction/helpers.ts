@@ -26,7 +26,7 @@ import { UnstructuredAPIExtraction } from '../entities/extractions/unstructured-
 import { nodeQueue, pythonQueue } from '../jobs/extraction.queue';
 
 import { ExtractionBackend } from './constants';
-import { DoclingExtractionDocument, UnstructuredExtractionDocument } from './types';
+import { DoclingChunksExtraction, UnstructuredExtractionDocument } from './types';
 
 import { File } from '@/files/entities/file.entity';
 import { EXTRACTION_BACKEND, S3_BUCKET_FILE_STORAGE } from '@/config';
@@ -41,7 +41,11 @@ export function supportsExtraction(
     case ExtractionBackend.DOCLING: {
       const extension = mime.getExtension(mimeType);
       if (!extension) return false;
-      return ['docx', 'html', 'jpeg', 'pdf', 'pptx', 'png'].includes(extension);
+      return (
+        mimeType.startsWith('text/') ||
+        mimeType === 'application/json' ||
+        ['docx', 'html', 'jpeg', 'pdf', 'pptx', 'png'].includes(extension)
+      );
     }
     case ExtractionBackend.WDU:
       return (
@@ -96,14 +100,25 @@ export async function scheduleExtraction(
     case ExtractionBackend.DOCLING: {
       file.extraction = new DoclingExtraction({ jobId: file.id });
       await ORM.em.flush();
-      await pythonQueue.add(
-        QueueName.FILES_EXTRACTION_PYTHON,
-        {
-          fileId: file.id,
-          backend
-        },
-        { jobId: file.id }
-      );
+      if (file.mimeType?.startsWith('text/') || file.mimeType === 'application/json') {
+        await pythonQueue.add(
+          QueueName.FILES_EXTRACTION_NODE,
+          {
+            fileId: file.id,
+            backend
+          },
+          { jobId: file.id }
+        );
+      } else {
+        await pythonQueue.add(
+          QueueName.FILES_EXTRACTION_PYTHON,
+          {
+            fileId: file.id,
+            backend
+          },
+          { jobId: file.id }
+        );
+      }
       break;
     }
     case ExtractionBackend.WDU: {
@@ -152,6 +167,20 @@ export async function removeExtraction(file: Loaded<File>) {
   const extraction = file.extraction;
   if (!extraction) throw new Error('No extraction to remove');
   switch (extraction.backend) {
+    case ExtractionBackend.DOCLING:
+      if (extraction.documentStorageId)
+        await s3Client
+          .deleteObject({ Bucket: S3_BUCKET_FILE_STORAGE, Key: extraction.documentStorageId })
+          .promise();
+      if (extraction.chunksStorageId)
+        await s3Client
+          .deleteObject({ Bucket: S3_BUCKET_FILE_STORAGE, Key: extraction.chunksStorageId })
+          .promise();
+      if (extraction.textStorageId)
+        await s3Client
+          .deleteObject({ Bucket: S3_BUCKET_FILE_STORAGE, Key: extraction.textStorageId })
+          .promise();
+      break;
     case ExtractionBackend.WDU:
       if (extraction.storageId)
         await s3Client
@@ -187,11 +216,8 @@ export async function getExtractedText(file: Loaded<File>) {
       return body.toString('utf-8');
     }
     case ExtractionBackend.DOCLING: {
-      if (!extraction.storageId) throw new Error('Extraction missing');
-      const conversion = JSON.parse(
-        await readTextFile(extraction.storageId)
-      ) as DoclingExtractionDocument;
-      return conversion.markdown;
+      if (!extraction.textStorageId) throw new Error('Extraction missing');
+      return readTextFile(extraction.textStorageId);
     }
     case ExtractionBackend.UNSTRUCTURED_OPENSOURCE:
     case ExtractionBackend.UNSTRUCTURED_API: {
@@ -209,11 +235,17 @@ export async function getExtractedChunks(file: Loaded<File>) {
   if (!extraction) throw new Error('Extraction not found');
   switch (extraction.backend) {
     case ExtractionBackend.DOCLING: {
-      if (!extraction.storageId) throw new Error('Extraction missing');
-      const document = JSON.parse(
-        await readTextFile(extraction.storageId)
-      ) as DoclingExtractionDocument;
-      return document.chunks.map((c) => c.text);
+      if (!extraction.chunksStorageId) {
+        if (!extraction.textStorageId) throw new Error('Extraction missing');
+        const text = await getExtractedText(file);
+        const splitter = new RecursiveCharacterTextSplitter({ chunkSize: 400, chunkOverlap: 200 });
+        const documents = await splitter.createDocuments([text], undefined);
+        return documents.map((doc) => doc.pageContent);
+      }
+      const chunks = JSON.parse(
+        await readTextFile(extraction.chunksStorageId)
+      ) as DoclingChunksExtraction;
+      return chunks.map((c) => c.text);
     }
     case ExtractionBackend.WDU: {
       const text = await getExtractedText(file);

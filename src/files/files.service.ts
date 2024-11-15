@@ -143,6 +143,7 @@ export async function createFile({
       .headObject({ Bucket: S3_BUCKET_FILE_STORAGE, Key: file.storageId })
       .promise();
     file.contentHash = passthroughHash.hash.digest('hex');
+    file.mimeType = head.ContentType;
     file.bytes = head.ContentLength ?? 0;
     await ORM.em.persistAndFlush(file);
     getFilesLogger(file.id).info('File created');

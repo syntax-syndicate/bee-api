@@ -50,6 +50,9 @@ export class File extends ProjectScopedEntity {
   contentHash!: string; // SHA256 hash of the file content
 
   @Property()
+  mimeType?: string;
+
+  @Property()
   storageId: string;
 
   @Embedded({ object: true })

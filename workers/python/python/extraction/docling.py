@@ -41,29 +41,44 @@ async def docling_extraction(file):
         with tempfile.TemporaryDirectory() as tmp_dir:
             # Use file_name to support file type discrimination.
             source_doc = f"{tmp_dir}/{file_name}"
-            
+
             await s3.meta.client.download_file(config.s3_bucket_file_storage, storage_id, source_doc)
 
             doc = DocumentConverter().convert(source_doc).document
             dict = doc.export_to_dict()
             markdown = doc.export_to_markdown()
-            chunks = [{ "text": c.text } for c in list(HierarchicalChunker().chunk(doc))]
+            chunks = [{"text": c.text}
+                      for c in list(HierarchicalChunker().chunk(doc))]
 
-            body = {
-                "dict": dict,
-                "markdown": markdown,
-                "chunks": chunks
-            }
-        
+            document_storage_id = f"{EXTRACTION_DIR}/{storage_id}/document.json"
             await s3.meta.client.put_object(
                 Bucket=f"{config.s3_bucket_file_storage}",
-                Key=f"{EXTRACTION_DIR}/{storage_id}.json",
-                Body=json.dumps(body),
+                Key=document_storage_id,
+                Body=json.dumps(dict),
+                ContentType="application/json"
+            )
+            text_storage_id = f"{EXTRACTION_DIR}/{storage_id}/text.md"
+            await s3.meta.client.put_object(
+                Bucket=f"{config.s3_bucket_file_storage}",
+                Key=text_storage_id,
+                Body=json.dumps(markdown),
+                ContentType="text/markdown"
+            )
+            chunks_storage_id = f"{EXTRACTION_DIR}/{storage_id}/chunks.json"
+            await s3.meta.client.put_object(
+                Bucket=f"{config.s3_bucket_file_storage}",
+                Key=chunks_storage_id,
+                Body=json.dumps(chunks),
                 ContentType="application/json"
             )
 
     result = await database.get_collection('file').update_one(
-        {"_id": file["_id"]}, {"$set": {"extraction.jobId": None, "extraction.storageId": f"{EXTRACTION_DIR}/{storage_id}.json"}})
-    
+        {"_id": file["_id"]}, {"$set": {
+            "extraction.jobId": None,
+            "extraction.documentStorageId": document_storage_id,
+            "extraction.chunksStorageId": chunks_storage_id,
+            "extraction.textStorageId": text_storage_id
+        }})
+
     if result.modified_count == 0:
         raise RuntimeError("File not found")
