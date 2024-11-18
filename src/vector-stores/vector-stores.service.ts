@@ -57,10 +57,7 @@ import { getUpdatedValue } from '@/utils/update.js';
 import { VectorStoreExpirationAfter } from '@/vector-stores/entities/vector-store-expiration-after.entity.js';
 import { determineChunkingStrategy } from '@/vector-store-files/utils/determineChunkingStrategy.js';
 import { QueueName } from '@/jobs/constants.js';
-import {
-  assertVectorStoreFilesQuota,
-  deleteVectorStoreFiles
-} from '@/vector-store-files/vector-store-files.service.js';
+import { deleteVectorStoreFiles } from '@/vector-store-files/vector-store-files.service.js';
 import { Thread } from '@/threads/thread.entity.js';
 
 const getVectorStoreLogger = (vectorStoreId?: string, vectorStoreFileId?: string) =>
@@ -177,9 +174,6 @@ export async function createVectorStore(
   const dependsOn = body.depends_on
     ? ref(await ORM.em.getRepository(Thread).findOneOrFail({ id: body.depends_on.thread.id }))
     : undefined;
-
-  await assertVectorStoreFilesQuota();
-
   const vectorStore = new VectorStore({
     name: body.name ?? 'Vector store',
     expiresAfter: body.expires_after && new VectorStoreExpirationAfter(body.expires_after),

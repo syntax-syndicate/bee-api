@@ -66,21 +66,6 @@ import { createClient } from '@/redis.js';
 import { ToolCall } from '@/tools/entities/tool-calls/tool-call.entity.js';
 import { SystemTools } from '@/tools/entities/tool-calls/system-call.entity.js';
 import { ensureRequestContextData } from '@/context.js';
-import { getProjectPrincipal } from '@/administration/helpers.js';
-
-const DAILY_RUNS_QUOTA = 20;
-export async function assertRunsQuota(newRuns = 1) {
-  const count = await ORM.em.getRepository(Run).count({
-    createdBy: getProjectPrincipal(),
-    createdAt: { $gte: dayjs().subtract(1, 'day').toDate() }
-  });
-  if (count + newRuns > DAILY_RUNS_QUOTA) {
-    throw new APIError({
-      message: 'Your daily vector store file quota has been exceeded',
-      code: APIErrorCode.TOO_MANY_REQUESTS
-    });
-  }
-}
 
 const getRunsLogger = (runId?: string) => getServiceLogger('runs').child({ runId });
 
@@ -199,8 +184,6 @@ export async function createRun({
       });
     }
   }
-
-  await assertRunsQuota();
 
   const run = new Run({
     thread: ref(thread),
