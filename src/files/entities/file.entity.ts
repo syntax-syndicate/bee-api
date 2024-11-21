@@ -49,12 +49,23 @@ export class File extends ProjectScopedEntity {
   contentHash!: string; // SHA256 hash of the file content
 
   @Property()
+  mimeType?: string;
+
+  @Property()
   storageId: string;
 
   @Embedded({ object: true })
   extraction?: UnstructuredAPIExtraction | UnstructuredOpensourceExtraction | WDUExtraction;
 
-  constructor({ purpose, bytes, filename, contentHash, storageId, ...rest }: FilePurposeInput) {
+  constructor({
+    purpose,
+    bytes,
+    filename,
+    contentHash,
+    storageId,
+    mimeType,
+    ...rest
+  }: FilePurposeInput) {
     super(rest);
 
     this.purpose = purpose;
@@ -62,9 +73,10 @@ export class File extends ProjectScopedEntity {
     this.filename = filename;
     this.contentHash = contentHash;
     this.storageId = storageId ?? randomUUID();
+    this.mimeType = mimeType;
   }
 }
 
 export type FilePurposeInput = ProjectScopedEntityInput &
-  Pick<File, 'purpose' | 'bytes' | 'filename' | 'contentHash'> &
+  Pick<File, 'purpose' | 'bytes' | 'filename' | 'contentHash' | 'mimeType'> &
   Partial<Pick<File, 'storageId'>>;
