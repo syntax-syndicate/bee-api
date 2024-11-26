@@ -29,12 +29,6 @@ import { getDefaultModel } from '@/runs/execution/factory';
 import { SystemTools } from '@/tools/entities/tool-calls/system-call.entity';
 import { ProjectApiKey } from '@/administration/entities/project-api-key.entity';
 import { API_KEY_PREFIX, scryptApiKey } from '@/auth/utils';
-import {
-  ORGANIZATION_ID_DEFAULT,
-  ORGANIZATION_OWNER_ID_DEFAULT,
-  PROJECT_ADMIN_ID_DEFAULT,
-  PROJECT_ID_DEFAULT
-} from '@/config';
 import { redactProjectKeyValue } from '@/administration/helpers';
 import { Agent } from '@/runs/execution/constants';
 
@@ -53,17 +47,19 @@ export class DatabaseSeeder extends Seeder {
     const user = new User({
       externalId: USER_EXTERNAL_ID,
       name: 'Test user',
-      email: 'test@email.com'
+      email: 'test@email.com',
+      defaultOrganization: em
+        .getRepository(Organization)
+        .getReference('placeholder', { wrapped: true }),
+      defaultProject: em.getRepository(Project).getReference('placeholder', { wrapped: true })
     });
     const organization = new Organization({ createdBy: ref(user), name: 'Default Organization' });
-    organization.id = ORGANIZATION_ID_DEFAULT ?? 'org_670cc04869ddffe24f4fd70d';
     const organizationUser = new OrganizationUser({
       user: ref(user),
       role: OrganizationUserRole.OWNER,
       organization: ref(organization),
       createdBy: em.getRepository(OrganizationUser).getReference('placeholder', { wrapped: true })
     });
-    organizationUser.id = ORGANIZATION_OWNER_ID_DEFAULT;
     organizationUser.createdBy = em
       .getRepository(OrganizationUser)
       .getReference(organizationUser.id, { wrapped: true });
@@ -72,14 +68,14 @@ export class DatabaseSeeder extends Seeder {
       createdBy: ref(organizationUser),
       organization: ref(organization)
     });
-    project.id = PROJECT_ID_DEFAULT ?? 'proj_670cc04869ddffe24f4fd70f';
+    user.defaultOrganization = ref(organization);
+    user.defaultProject = ref(project);
     const projectUser = new ProjectPrincipal({
       principal: new UserPrincipal({ user: ref(organizationUser) }),
       role: ProjectRole.ADMIN,
       createdBy: em.getRepository(ProjectPrincipal).getReference('placeholder', { wrapped: true }),
       project: ref(project)
     });
-    projectUser.id = PROJECT_ADMIN_ID_DEFAULT;
     projectUser.createdBy = em
       .getRepository(ProjectPrincipal)
       .getReference(projectUser.id, { wrapped: true });

@@ -26,6 +26,8 @@ export const userSchema = {
     object: { const: 'user' },
     name: { type: 'string', nullable: true },
     email: { type: 'string', nullable: true },
+    default_organization: { type: 'string', nullable: false },
+    default_project: { type: 'string', nullable: false },
     metadata: metadataSchema
   }
 } as const satisfies JSONSchema;
