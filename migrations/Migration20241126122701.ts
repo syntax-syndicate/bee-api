@@ -11,7 +11,7 @@ import { OrganizationUser } from '@/administration/entities/organization-user.en
 
 type BaseDocument = { _id: string; createdAt: Date; updatedAt: Date; [key: string]: any };
 
-const IBMOrganization = process.env.IBM_ORGANIZATION_ID ?? 'org_670cc04869ddffe24f4fd70d';
+const IBMOrganization = process.env.ORGANIZATION_ID_DEFAULT ?? 'org_670cc04869ddffe24f4fd70d';
 export class Migration20241126122701 extends Migration {
   async up(): Promise<void> {
     await this.getCollection(User).updateMany(
