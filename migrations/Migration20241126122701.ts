@@ -8,17 +8,28 @@ import { ProjectRole } from '@/administration/entities/constants';
 import { Project, ProjectVisiblity } from '@/administration/entities/project.entity';
 import { Organization } from '@/administration/entities/organization.entity';
 import { OrganizationUser } from '@/administration/entities/organization-user.entity';
+import { IBM_ORGANIZATION_OWNER_ID } from '@/config';
 
 type BaseDocument = { _id: string; createdAt: Date; updatedAt: Date; [key: string]: any };
 
-const IBMOrganization = process.env.ORGANIZATION_ID_DEFAULT ?? 'org_670cc04869ddffe24f4fd70d';
 export class Migration20241126122701 extends Migration {
   async up(): Promise<void> {
+    const orgOwner = await this.getCollection<BaseDocument>(OrganizationUser).findOne(
+      { _id: IBM_ORGANIZATION_OWNER_ID },
+      { session: this.ctx }
+    );
+
+    if (!orgOwner) {
+      throw new Error('IBM organization owner not found.');
+    }
+
+    const defaultOrganization = orgOwner.organization;
+
     await this.getCollection(User).updateMany(
       {},
       {
         $set: {
-          defaultOrganization: IBMOrganization
+          defaultOrganization
         }
       },
       { session: this.ctx }
@@ -30,20 +41,20 @@ export class Migration20241126122701 extends Migration {
       const organizationUser = await this.getCollection<BaseDocument>(OrganizationUser).findOne(
         {
           user: user._id,
-          organization: IBMOrganization
+          organization: defaultOrganization
         },
         { session: this.ctx }
       );
 
       if (!organizationUser) {
         // eslint-disable-next-line no-console
-        console.log('User not part of IBM org.');
+        console.log('User not part of Default org.');
         return;
       }
 
       const project = new Project({
         name: `${user.name}'s project`,
-        organization: ref(Organization, IBMOrganization),
+        organization: ref(Organization, defaultOrganization),
         createdBy: ref(organizationUser._id),
         visibility: ProjectVisiblity.PRIVATE
       });
