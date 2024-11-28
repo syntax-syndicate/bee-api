@@ -29,6 +29,7 @@ import { getDefaultModel } from '@/runs/execution/factory';
 import { SystemTools } from '@/tools/entities/tool-calls/system-call.entity';
 import { ProjectApiKey } from '@/administration/entities/project-api-key.entity';
 import { API_KEY_PREFIX, scryptApiKey } from '@/auth/utils';
+import { IBM_ORGANIZATION_OWNER_ID } from '@/config';
 import { redactProjectKeyValue } from '@/administration/helpers';
 import { Agent } from '@/runs/execution/constants';
 
@@ -60,6 +61,7 @@ export class DatabaseSeeder extends Seeder {
       organization: ref(organization),
       createdBy: em.getRepository(OrganizationUser).getReference('placeholder', { wrapped: true })
     });
+    organizationUser.id = IBM_ORGANIZATION_OWNER_ID;
     organizationUser.createdBy = em
       .getRepository(OrganizationUser)
       .getReference(organizationUser.id, { wrapped: true });
@@ -68,14 +70,17 @@ export class DatabaseSeeder extends Seeder {
       createdBy: ref(organizationUser),
       organization: ref(organization)
     });
-    user.defaultOrganization = ref(organization);
-    user.defaultProject = ref(project);
     const projectUser = new ProjectPrincipal({
       principal: new UserPrincipal({ user: ref(organizationUser) }),
       role: ProjectRole.ADMIN,
       createdBy: em.getRepository(ProjectPrincipal).getReference('placeholder', { wrapped: true }),
       project: ref(project)
     });
+    user.defaultOrganization = em
+      .getRepository(Organization)
+      .getReference(organization.id, { wrapped: true });
+    user.defaultProject = em.getRepository(Project).getReference(project.id, { wrapped: true });
+
     projectUser.createdBy = em
       .getRepository(ProjectPrincipal)
       .getReference(projectUser.id, { wrapped: true });

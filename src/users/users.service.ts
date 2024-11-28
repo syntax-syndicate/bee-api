@@ -33,6 +33,7 @@ import { UserPrincipal } from '@/administration/entities/principals/user-princip
 import { OrganizationUserRole, ProjectRole } from '@/administration/entities/constants.js';
 import { Project } from '@/administration/entities/project.entity.js';
 import { Organization } from '@/administration/entities/organization.entity.js';
+import { IBM_ORGANIZATION_OWNER_ID } from '@/config.js';
 
 const getUserLogger = (userId: string) => getServiceLogger('user').child({ userId });
 
@@ -66,21 +67,41 @@ export async function createUser({
     defaultProject: ORM.em.getRepository(Project).getReference('placeholder', { wrapped: true })
   });
 
-  const organization = new Organization({
-    name: `${name}'s organization`,
-    createdBy: ref(user)
-  });
+  let orgUser: OrganizationUser | null = null;
+  let organization: Organization | null = null;
+  if (email && email.endsWith('@ibm.com')) {
+    const defaultOrgOwner = await ORM.em
+      .getRepository(OrganizationUser)
+      .findOneOrFail(
+        { id: IBM_ORGANIZATION_OWNER_ID },
+        { filters: { orgAdministrationAccess: false }, populate: ['organization'] }
+      );
+    organization = defaultOrgOwner.organization.$;
+    // Become org owner
+    requestContext.set('organizationUser', defaultOrgOwner);
+    orgUser = new OrganizationUser({
+      user: ref(user),
+      role: OrganizationUserRole.MEMBER
+    });
+  } else {
+    organization = new Organization({
+      name: `${name}'s organization`,
+      createdBy: ref(user)
+    });
 
-  const orgUser = new OrganizationUser({
-    user: ref(user),
-    role: OrganizationUserRole.OWNER,
-    organization: ref(organization),
-    createdBy: ORM.em.getRepository(OrganizationUser).getReference('placeholder', { wrapped: true })
-  });
-  orgUser.createdBy = ORM.em
-    .getRepository(OrganizationUser)
-    .getReference(orgUser.id, { wrapped: true }); // Bypass chicken-egg problem
-  requestContext.set('organizationUser', orgUser);
+    orgUser = new OrganizationUser({
+      user: ref(user),
+      role: OrganizationUserRole.OWNER,
+      organization: ref(organization),
+      createdBy: ORM.em
+        .getRepository(OrganizationUser)
+        .getReference('placeholder', { wrapped: true })
+    });
+    orgUser.createdBy = ORM.em
+      .getRepository(OrganizationUser)
+      .getReference(orgUser.id, { wrapped: true }); // Bypass chicken-egg problem
+    requestContext.set('organizationUser', orgUser);
+  }
 
   const project = new Project({ name: `${name}'s project`, visibility: 'private' });
   const projectPrincipal = new ProjectPrincipal({
@@ -96,8 +117,11 @@ export async function createUser({
     .getReference(projectPrincipal.id, { wrapped: true }); // Bypass chicken-egg problem
   requestContext.set('projectPrincipal', projectPrincipal);
 
-  user.defaultOrganization = ref(organization);
-  user.defaultProject = ref(project);
+  user.defaultOrganization = ORM.em
+    .getRepository(Organization)
+    .getReference(organization.id, { wrapped: true });
+  user.defaultProject = ORM.em.getRepository(Project).getReference(project.id, { wrapped: true });
+
   await ORM.em.persistAndFlush([user, organization, orgUser, project, projectPrincipal]);
   getUserLogger(user.id).info({ externalId, metadata }, 'User created');
   return toDto(user);

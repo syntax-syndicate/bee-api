@@ -170,6 +170,9 @@ export const RUN_BULLMQ_WORKERS = getStringArray('RUN_BULLMQ_WORKERS', allowedQu
 
 export const CRYPTO_CIPHER_KEY = Buffer.from(getEnv('CRYPTO_CIPHER_KEY'), 'base64');
 
+// TODO remove after org/project management is ready
+export const IBM_ORGANIZATION_OWNER_ID = getEnv('IBM_ORGANIZATION_OWNER_ID');
+
 const RUNS_QUOTA_DAILY_RAW = getEnv('RUNS_QUOTA_DAILY', null);
 export const RUNS_QUOTA_DAILY = RUNS_QUOTA_DAILY_RAW ? parseInt(RUNS_QUOTA_DAILY_RAW) : Infinity;
 
