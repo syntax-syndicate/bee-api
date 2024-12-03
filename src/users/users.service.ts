@@ -69,7 +69,7 @@ export async function createUser({
 
   let orgUser: OrganizationUser | null = null;
   let organization: Organization | null = null;
-  if (email && email.endsWith('@ibm.com')) {
+  if (email && (email.endsWith('@ibm.com') || email.endsWith('.ibm.com'))) {
     const defaultOrgOwner = await ORM.em
       .getRepository(OrganizationUser)
       .findOneOrFail(

@@ -20,7 +20,7 @@ import { metadataSchema } from '@/schema.js';
 
 export const userSchema = {
   type: 'object',
-  required: ['id', 'object', 'name', 'email'],
+  required: ['id', 'object', 'name', 'email', 'default_organization', 'default_project'],
   properties: {
     id: { type: 'string' },
     object: { const: 'user' },
