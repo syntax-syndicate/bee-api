@@ -30,8 +30,10 @@ import { getUpdatedValue } from '@/utils/update.js';
 import { OrganizationUser } from '@/administration/entities/organization-user.entity.js';
 import { ProjectPrincipal } from '@/administration/entities/project-principal.entity.js';
 import { UserPrincipal } from '@/administration/entities/principals/user-principal.entity.js';
-import { ORGANIZATION_OWNER_ID_DEFAULT, PROJECT_ADMIN_ID_DEFAULT } from '@/config.js';
 import { OrganizationUserRole, ProjectRole } from '@/administration/entities/constants.js';
+import { Project } from '@/administration/entities/project.entity.js';
+import { Organization } from '@/administration/entities/organization.entity.js';
+import { IBM_ORGANIZATION_OWNER_ID } from '@/config.js';
 
 const getUserLogger = (userId: string) => getServiceLogger('user').child({ userId });
 
@@ -42,7 +44,9 @@ function toDto(user: Loaded<User>): UserDto {
     external_id: user.externalId,
     email: user.email ?? null,
     name: user.name ?? null,
-    metadata: user.metadata
+    metadata: user.metadata,
+    default_organization: user.defaultOrganization.id,
+    default_project: user.defaultProject.id
   };
 }
 
@@ -52,36 +56,73 @@ export async function createUser({
   name,
   metadata
 }: Pick<UserInput, 'externalId' | 'email' | 'name'> & UserCreateBody): Promise<UserCreateResponse> {
-  const user = new User({ externalId, email, name, metadata });
-
-  const defaultOrgOwner = await ORM.em
-    .getRepository(OrganizationUser)
-    .findOneOrFail(
-      { id: ORGANIZATION_OWNER_ID_DEFAULT },
-      { filters: { orgAdministrationAccess: false } }
-    );
-  const defaultProjectAdmin = await ORM.em
-    .getRepository(ProjectPrincipal)
-    .findOneOrFail(
-      { id: PROJECT_ADMIN_ID_DEFAULT },
-      { filters: { projectAdministrationAccess: false } }
-    );
-
-  // Become org owner
-  requestContext.set('organizationUser', defaultOrgOwner);
-  const orgUser = new OrganizationUser({
-    user: ref(user),
-    role: OrganizationUserRole.MEMBER
+  const user = new User({
+    externalId,
+    email,
+    name,
+    metadata,
+    defaultOrganization: ORM.em
+      .getRepository(Organization)
+      .getReference('placeholder', { wrapped: true }),
+    defaultProject: ORM.em.getRepository(Project).getReference('placeholder', { wrapped: true })
   });
 
-  // Become project admin
-  requestContext.set('projectPrincipal', defaultProjectAdmin);
+  let orgUser: OrganizationUser | null = null;
+  let organization: Organization | null = null;
+  if (email && (email.endsWith('@ibm.com') || email.endsWith('.ibm.com'))) {
+    const defaultOrgOwner = await ORM.em
+      .getRepository(OrganizationUser)
+      .findOneOrFail(
+        { id: IBM_ORGANIZATION_OWNER_ID },
+        { filters: { orgAdministrationAccess: false }, populate: ['organization'] }
+      );
+    organization = defaultOrgOwner.organization.$;
+    // Become org owner
+    requestContext.set('organizationUser', defaultOrgOwner);
+    orgUser = new OrganizationUser({
+      user: ref(user),
+      role: OrganizationUserRole.MEMBER
+    });
+  } else {
+    organization = new Organization({
+      name: `${name}'s organization`,
+      createdBy: ref(user)
+    });
+
+    orgUser = new OrganizationUser({
+      user: ref(user),
+      role: OrganizationUserRole.OWNER,
+      organization: ref(organization),
+      createdBy: ORM.em
+        .getRepository(OrganizationUser)
+        .getReference('placeholder', { wrapped: true })
+    });
+    orgUser.createdBy = ORM.em
+      .getRepository(OrganizationUser)
+      .getReference(orgUser.id, { wrapped: true }); // Bypass chicken-egg problem
+    requestContext.set('organizationUser', orgUser);
+  }
+
+  const project = new Project({ name: `${name}'s project`, visibility: 'private' });
   const projectPrincipal = new ProjectPrincipal({
+    project: ref(project),
+    createdBy: ORM.em
+      .getRepository(ProjectPrincipal)
+      .getReference('placeholder', { wrapped: true }),
     principal: new UserPrincipal({ user: ref(orgUser) }),
-    role: ProjectRole.READER
+    role: ProjectRole.ADMIN
   });
+  projectPrincipal.createdBy = ORM.em
+    .getRepository(ProjectPrincipal)
+    .getReference(projectPrincipal.id, { wrapped: true }); // Bypass chicken-egg problem
+  requestContext.set('projectPrincipal', projectPrincipal);
 
-  await ORM.em.persistAndFlush([user, orgUser, projectPrincipal]);
+  user.defaultOrganization = ORM.em
+    .getRepository(Organization)
+    .getReference(organization.id, { wrapped: true });
+  user.defaultProject = ORM.em.getRepository(Project).getReference(project.id, { wrapped: true });
+
+  await ORM.em.persistAndFlush([user, organization, orgUser, project, projectPrincipal]);
   getUserLogger(user.id).info({ externalId, metadata }, 'User created');
   return toDto(user);
 }

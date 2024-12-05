@@ -25,7 +25,8 @@ const artifactCommonSchema = {
     thread_id: { type: 'string', nullable: true },
     message_id: { type: 'string', nullable: true },
     share_url: { type: 'string', nullable: true }
-  }
+  },
+  oneOf: artifactSharedSchema.oneOf
 } as const satisfies JSONSchema;
 
 export const artifactSchema = {
