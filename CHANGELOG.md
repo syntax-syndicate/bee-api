@@ -1,5 +1,32 @@
 # Changelog
 
+## [0.0.15](https://github.com/i-am-bee/bee-api/compare/v0.0.14...v0.0.15) (2024-12-11)
+
+### Features
+
+* **artifact:** add search param and allow source_code update ([#104](https://github.com/i-am-bee/bee-api/issues/104)) ([6ca4bf4](https://github.com/i-am-bee/bee-api/commit/6ca4bf436e6b77d44b4d2939ef705aacca82984e))
+* **artifact:** message_id is optional ([#125](https://github.com/i-am-bee/bee-api/issues/125)) ([c09898b](https://github.com/i-am-bee/bee-api/commit/c09898b3cf6a50307e8a7bf41f3618f26073c86b))
+* **artifact:** rename secret to token ([#118](https://github.com/i-am-bee/bee-api/issues/118)) ([099952c](https://github.com/i-am-bee/bee-api/commit/099952cd7a8f7a086b18a21731bf1428989e2900))
+* **chat:** add chat entity ([#127](https://github.com/i-am-bee/bee-api/issues/127)) ([0b46055](https://github.com/i-am-bee/bee-api/commit/0b460552f9950e50b4fdfc4a32e51182e1bedfc1))
+* **chat:** constrained decoding support ([#103](https://github.com/i-am-bee/bee-api/issues/103)) ([8151586](https://github.com/i-am-bee/bee-api/commit/81515866e9eb3c7bd30a18f4dc9b0e6ba117c25f))
+* **deps:** upgrade bee-agent-framework ([#106](https://github.com/i-am-bee/bee-api/issues/106)) ([178937c](https://github.com/i-am-bee/bee-api/commit/178937c92c407e818c85ec98b408e3d6e174ffbd))
+* **deps:** upgrade bee-agent-framework ([#107](https://github.com/i-am-bee/bee-api/issues/107)) ([b15ced1](https://github.com/i-am-bee/bee-api/commit/b15ced13e494af5f539e2407543853d37d9b7e79))
+* **deps:** upgrade bee-agent-framework ([#110](https://github.com/i-am-bee/bee-api/issues/110)) ([b999907](https://github.com/i-am-bee/bee-api/commit/b999907bd4e7b04ce0ca53b44d016365de6996b1))
+* **docling:** update docling and use hybrid chunker ([#117](https://github.com/i-am-bee/bee-api/issues/117)) ([592c4f8](https://github.com/i-am-bee/bee-api/commit/592c4f8db15705e637ca8211705a244321d46651))
+* **log:** add basic tracking ([#128](https://github.com/i-am-bee/bee-api/issues/128)) ([9deeb27](https://github.com/i-am-bee/bee-api/commit/9deeb27dbb9fe929d9b3e5e3ec8224e1c6ceed4b))
+* **observe:** implement opentelemetry ([#113](https://github.com/i-am-bee/bee-api/issues/113)) ([f67e300](https://github.com/i-am-bee/bee-api/commit/f67e3006429032a83562e1420653e8d7b37e400b))
+* **python:** add opentelemetry logs and traces ([#114](https://github.com/i-am-bee/bee-api/issues/114)) ([f3ee5c5](https://github.com/i-am-bee/bee-api/commit/f3ee5c5b11d08c541cc246445d7ea17ac9d9c759))
+* **user:** make user name modifiable ([#108](https://github.com/i-am-bee/bee-api/issues/108)) ([2f57e2a](https://github.com/i-am-bee/bee-api/commit/2f57e2ad575db13d68f91211c115449f06acd5f6))
+
+### Bug Fixes
+
+* **build:** import ioredis parseUrl from module ([#120](https://github.com/i-am-bee/bee-api/issues/120)) ([957001f](https://github.com/i-am-bee/bee-api/commit/957001f7843875539538f9bdb79e6171725c10c7))
+* fs error logs in production ([#123](https://github.com/i-am-bee/bee-api/issues/123)) ([36af5fa](https://github.com/i-am-bee/bee-api/commit/36af5fa3e92c37a70674cba59930a8b24e9c1830))
+* **logs:** make sure errors are visible in elastic ([#111](https://github.com/i-am-bee/bee-api/issues/111)) ([3712103](https://github.com/i-am-bee/bee-api/commit/3712103dbff933940b6ef01ce72f6d16eaad14c8))
+* **migration:** default projects ([#112](https://github.com/i-am-bee/bee-api/issues/112)) ([626310a](https://github.com/i-am-bee/bee-api/commit/626310aaf40c858184d698fa833fe20970c11b4b))
+* otel python disable ([#121](https://github.com/i-am-bee/bee-api/issues/121)) ([31dc458](https://github.com/i-am-bee/bee-api/commit/31dc45893ab4d6389d8d88ec67414cf8cad3033a))
+* **redis:** properly close redis connections ([#109](https://github.com/i-am-bee/bee-api/issues/109)) ([d274908](https://github.com/i-am-bee/bee-api/commit/d27490839b08d62aed73346b8daa4ab94e6ea93b))
+
 ## [0.0.14](https://github.com/i-am-bee/bee-api/compare/v0.0.13...v0.0.14) (2024-12-03)
 
 ### Features
