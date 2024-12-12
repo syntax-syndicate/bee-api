@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.0.16](https://github.com/i-am-bee/bee-api/compare/v0.0.15...v0.0.16) (2024-12-12)
+
+### Bug Fixes
+
+* **log:** update logged properties ([#130](https://github.com/i-am-bee/bee-api/issues/130)) ([e6ee1ec](https://github.com/i-am-bee/bee-api/commit/e6ee1ec5ed071b025b604a6410c5865279659f83))
+
 ## [0.0.15](https://github.com/i-am-bee/bee-api/compare/v0.0.14...v0.0.15) (2024-12-11)
 
 ### Features
