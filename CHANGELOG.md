@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.0.18](https://github.com/i-am-bee/bee-api/compare/v0.0.17...v0.0.18) (2024-12-15)
+
+### Features
+
+* **user:** add default assistant when user created ([#137](https://github.com/i-am-bee/bee-api/issues/137)) ([328c8de](https://github.com/i-am-bee/bee-api/commit/328c8ded996db1d8d8d649fbcff24c67f5cee2ed))
+
+### Bug Fixes
+
+* **limits:** merge window and rate limits, fix streaming headers ([#134](https://github.com/i-am-bee/bee-api/issues/134)) ([e997180](https://github.com/i-am-bee/bee-api/commit/e9971803ae1f2e0d11f3a2d4cc0f4c194e83fb5a))
+* **readFile:** fix error for read file tool ([#133](https://github.com/i-am-bee/bee-api/issues/133)) ([05a59d9](https://github.com/i-am-bee/bee-api/commit/05a59d98b035bde280c71284b43c005a604d2128))
+
 ## [0.0.17](https://github.com/i-am-bee/bee-api/compare/v0.0.16...v0.0.17) (2024-12-13)
 
 ### Features
