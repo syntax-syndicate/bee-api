@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.0.20](https://github.com/i-am-bee/bee-api/compare/v0.0.19...v0.0.20) (2024-12-16)
+
+### Bug Fixes
+
+* **artifact:** update the share token only when the share property changes ([#139](https://github.com/i-am-bee/bee-api/issues/139)) ([c808d39](https://github.com/i-am-bee/bee-api/commit/c808d39b3f8c3af6ef206d553512ab7183fd440d))
+
 ## [0.0.19](https://github.com/i-am-bee/bee-api/compare/v0.0.18...v0.0.19) (2024-12-16)
 
 ### Features
