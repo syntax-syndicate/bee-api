@@ -19,6 +19,8 @@ import { CustomTool, CustomToolCreateError } from 'bee-agent-framework/tools/cus
 import dayjs from 'dayjs';
 import mime from 'mime/lite';
 import { WikipediaTool } from 'bee-agent-framework/tools/search/wikipedia';
+import { LLMTool } from 'bee-agent-framework/tools/llm';
+import { CalculatorTool } from 'bee-agent-framework/tools/calculator';
 import { Tool as FrameworkTool } from 'bee-agent-framework/tools/base';
 import { ZodTypeAny } from 'zod';
 import { zodToJsonSchema } from 'zod-to-json-schema';
@@ -72,6 +74,8 @@ import { createCodeInterpreterConnectionOptions } from '@/runs/execution/tools/h
 import { ReadFileTool } from '@/runs/execution/tools/read-file-tool.js';
 import { snakeToCamel } from '@/utils/strings.js';
 import { createSearchTool } from '@/runs/execution/tools/search-tool';
+import { createChatLLM } from '@/runs/execution/factory.js';
+import { getDefaultModel } from '@/runs/execution/constants.js';
 
 type SystemTool = Pick<FrameworkTool, 'description' | 'name' | 'inputSchema'> & {
   type: ToolType;
@@ -462,6 +466,10 @@ function getSystemTools() {
   });
   const fileSearch = new FileSearchTool({ vectorStores: [], maxNumResults: 0 });
   const readFile = new ReadFileTool({ files: [], fileSize: 0 });
+  const llmTool = new LLMTool({
+    llm: createChatLLM({ model: getDefaultModel() })
+  });
+  const calculatorTool = new CalculatorTool();
 
   const systemTools = new Map<string, SystemTool>();
 
@@ -569,6 +577,26 @@ function getSystemTools() {
     userDescription:
       'Execute Python code for various tasks, including data analysis, file processing, and visualizations. Supports the installation of any library such as NumPy, Pandas, SciPy, and Matplotlib. Users can create new files or convert existing files, which are then made available for download.'
   });
+  systemTools.set(SystemTools.LLM, {
+    type: ToolType.SYSTEM,
+    id: SystemTools.LLM,
+    createdAt: new Date('2024-12-12'),
+    ...llmTool,
+    inputSchema: llmTool.inputSchema.bind(llmTool),
+    isExternal: false,
+    userDescription:
+      'Uses expert LLM to work with data in the existing conversation (classification, entity extraction, summarization, ...)'
+  });
+  systemTools.set(SystemTools.CALCULATOR, {
+    type: ToolType.SYSTEM,
+    id: SystemTools.CALCULATOR,
+    createdAt: new Date('2024-12-12'),
+    ...calculatorTool,
+    inputSchema: calculatorTool.inputSchema.bind(calculatorTool),
+    isExternal: false,
+    userDescription:
+      'A calculator tool that performs basic arithmetic operations like addition, subtraction, multiplication, and division. Only use the calculator tool if you need to perform a calculation.'
+  });
 
   return systemTools;
 }
@@ -591,6 +619,8 @@ export async function listTools({
           allSystemTools.get(SystemTools.WIKIPEDIA),
           allSystemTools.get(SystemTools.WEATHER),
           allSystemTools.get(SystemTools.ARXIV),
+          allSystemTools.get(SystemTools.LLM),
+          allSystemTools.get(SystemTools.CALCULATOR),
           allSystemTools.get('read_file')
         ]
       : [];
